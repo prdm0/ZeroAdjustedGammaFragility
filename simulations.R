@@ -1,20 +1,18 @@
 #!/usr/bin/env Rscript
 
+library(parallel) 
 library(purrr) # install.packages("purrr")
 library(tibble) # install.packages("tibble")
 library(glue) # install.packages("glue")
 library(dplyr) # install.packages("dplyr")
 library(vroom) # install.packages("vroom")
-library(parallel) 
 library(pbmcapply) # install.packages("pbmcapply")
 library(Rcpp) # install.packages("Rcpp")
 library(openxlsx) # install.packages("openxlsx")
 
 rm(list = ls(all = TRUE))
 
-setwd("/home/prdm0/Dropbox/rascunhos/cleide/")
-
-Rcpp::sourceCpp("log_likelihood_rcpp.cpp")
+Rcpp::sourceCpp("src/log_likelihood_rcpp.cpp")
 
 s_zero_adjusted <- function(S){
   function(t, p0, ...){
@@ -92,24 +90,24 @@ geracao <- function(n, a, beta00, beta01, beta10, beta11, theta, tau) {
 
 
 log_likelihood <- function(par, dados) {
-
+  
   beta00 <- par[1L]
   beta01 <- par[2L]
   beta10 <- par[3L]
   beta11 <- par[4L]
   a <- par[5L]
   theta<- par[6L]
-
+  
   t <- dados$t
   delta <- dados$delta
   x <- dados$x
-
+  
   p0x <- exp(beta00 + beta01 * x) / (1 + exp(beta00 + beta01 * x))
   b_x <- exp(beta10 + beta11 * x)
-
+  
   # Log-verossimilhança
   log_like <- numeric(length(t))  # Vetor para armazenar a log-verossimilhança
-
+  
   one_step <- function(i){
     if (delta[i] == 1) {  # Evento observado
       if (t[i] == 0) {
@@ -168,32 +166,6 @@ mc <-
       
       t0 <- Sys.time()
       
-      # repeat{
-      #   dados <- 
-      #     geracao(
-      #       n = n,
-      #       a = a,
-      #       beta00 = beta00,
-      #       beta01 = beta01,
-      #       beta10 = beta10,
-      #       beta11 = beta11,
-      #       theta = theta,
-      #       tau = tau
-      #     )
-      #   
-      #   result_mc <-
-      #     try_optim(
-      #       par = c(0.5, 0.5, 0.5, 0.5, -0.5, 0.5),
-      #       fn = \(par) log_likelihood_rcpp(par = par, dados = dados),
-      #       control = list(fnscale = -1),
-      #       method = "BFGS"
-      #     )
-      #   
-      #   if (!is.null(result_mc) && result_mc$convergence == 0L) {
-      #     break
-      #   }
-      # } # Gerando dados ate haver convergencia 
-      
       repeat {
         # Gerar dados
         dados <- geracao(
@@ -220,7 +192,7 @@ mc <-
           break
         }
       }
-
+      
       est_mc <- result_mc$par
       
       hat_beta00 <- est_mc[1L]
@@ -230,12 +202,12 @@ mc <-
       hat_a <- est_mc[5L]
       hat_theta <- est_mc[6L]
       
-      hat_p00 <- exp(hat_beta00 + hat_beta01 * 0) / (1 + exp(hat_beta00 + hat_beta01 * 0))  # p0(x)
-      hat_p01 <- exp(hat_beta00 + hat_beta01 * 1) / (1 + exp(hat_beta00 + hat_beta01 * 1))  # p0(x)
+      hat_p00 <- exp(hat_beta00 + hat_beta01 * 0)/(1 + exp(hat_beta00 + hat_beta01 * 0))  # p0(x)
+      hat_p01 <- exp(hat_beta00 + hat_beta01 * 1)/(1 + exp(hat_beta00 + hat_beta01 * 1))  # p0(x)
       hat_b_0 <- exp(hat_beta10 + hat_beta11 * 0)
       hat_b_1 <- exp(hat_beta10 + hat_beta11 * 1)
-      hat_cura_0 <- (1-hat_p00)*(1-hat_theta*hat_b_0/hat_a)^(-1/hat_theta)
-      hat_cura_1 <- (1-hat_p01)*(1-hat_theta*hat_b_1/hat_a)^(-1/hat_theta)
+      hat_cura_0 <- (1 - hat_p00) * (1 - hat_theta*hat_b_0/hat_a)^(-1/hat_theta)
+      hat_cura_1 <- (1 - hat_p01) * (1 - hat_theta*hat_b_1/hat_a)^(-1/hat_theta)
       
       est_mc <- c(est_mc, hat_p00, hat_p01, hat_b_0, hat_b_1, hat_cura_0, hat_cura_1)
       
@@ -282,12 +254,12 @@ mc <-
         hat_a <- est_boot[5L]
         hat_theta <- est_boot[6L]
         
-        hat_p00 <- exp(hat_beta00 + hat_beta01 * 0) / (1 + exp(hat_beta00 + hat_beta01 * 0))  # p0(x)
-        hat_p01 <- exp(hat_beta00 + hat_beta01 * 1) / (1 + exp(hat_beta00 + hat_beta01 * 1))  # p0(x)
+        hat_p00 <- exp(hat_beta00 + hat_beta01 * 0)/(1 + exp(hat_beta00 + hat_beta01 * 0))  # p0(x)
+        hat_p01 <- exp(hat_beta00 + hat_beta01 * 1)/(1 + exp(hat_beta00 + hat_beta01 * 1))  # p0(x)
         hat_b_0 <- exp(hat_beta10 + hat_beta11 * 0)
         hat_b_1 <- exp(hat_beta10 + hat_beta11 * 1)
-        hat_cura_0 <- (1-hat_p00) * (1-hat_theta*hat_b_0/hat_a) ^ (-1/hat_theta)
-        hat_cura_1 <- (1-hat_p01) * (1-hat_theta*hat_b_1/hat_a) ^ (-1/hat_theta)
+        hat_cura_0 <- (1 - hat_p00) * (1 - hat_theta * hat_b_0/hat_a) ^ (-1/hat_theta)
+        hat_cura_1 <- (1 - hat_p01) * (1 - hat_theta * hat_b_1/hat_a) ^ (-1/hat_theta)
         
         est_boot <- c(est_boot, hat_p00, hat_p01, hat_b_0, hat_b_1, hat_cura_0, hat_cura_1)
         
@@ -305,7 +277,6 @@ mc <-
           "cura_0",
           "cura_1"
         )
-        
         est_boot
       }
       
@@ -314,11 +285,11 @@ mc <-
       
       # Estimador coorigido por vies via bootstrap
       est_coorigida_boot <- 2 * est_mc - apply(est_boot, MARGIN = 2L, FUN = mean)
-    
+      
       ic_boot <- 
         apply(est_boot, MARGIN = 2L, FUN = quantile, probs = c(sig/2, 1 - sig/2)) |>
         as_tibble() # Primeira linha é o limite inferior e a segunda é o limite superior
-    
+      
       # Checando cobertura dos intervalos
       cobertura_beta00 <- if(beta00 > ic_boot$beta00[1L] & beta00 < ic_boot$beta00[2L]) TRUE else FALSE
       cobertura_beta01 <- if(beta01 > ic_boot$beta01[1L] & beta01 < ic_boot$beta01[2L]) TRUE else FALSE
@@ -333,16 +304,19 @@ mc <-
       cobertura_cura_0 <- if(cura_0 > ic_boot$cura_0[1L] & cura_0 < ic_boot$cura_0[2L]) TRUE else FALSE
       cobertura_cura_1 <- if(cura_1 > ic_boot$cura_1[1L] & cura_1 < ic_boot$cura_1[2L]) TRUE else FALSE
       
-      ic_boot <- ic_boot |> t() |> as_tibble()
+      ic_boot <- ic_boot |> t() |> as.data.frame()
+      
       colnames(ic_boot) <- c("li", "ls")
       ic_boot <- 
         ic_boot |>
         dplyr::mutate(amplitudade = ls - li) 
       
-      time <- as.numeric(difftime(Sys.time(), t0, units = "hours"))
+      time_secs <- as.numeric(Sys.time() - t0)
+      time_mins <- time_secs/60
+      time_hours <- time_mins/60
       
       tibble(
-        iteracao_mc = m,
+        id_mc = m,
         n = n,
         nomes_parametros = c(
           "beta00",
@@ -391,7 +365,9 @@ mc <-
         amplitude = ic_boot$amplitudade,
         li_boot = ic_boot$li,
         ls_boot = ic_boot$ls,
-        tempo = time
+        tempo_segundos = time_secs,
+        tempo_minutos = time_mins,
+        tempo_horas = time_hours
       )
       
     } # Fim da funcao one_step
@@ -423,28 +399,35 @@ mc <-
     )
     
     r <- dplyr::bind_rows(r)
-    
-    r$tempo_horas <- mean(r$tempo)
+    r$tau <- tau
     
     r <-
       r |>
-      group_by(nomes_parametros) |>
-      dplyr::mutate(
-        vies_quadrado_mc = (parametros_verdadeiros - estimativas_mc) ^ 2,
-        vies_quadrado_boot = (parametros_verdadeiros - estimativas_corrigida_boot) ^ 2,
-        var_mc = var(estimativas_mc),
-        var_boot = var(estimativas_corrigida_boot),
-        eqm_quadrado_mc = vies_quadrado_mc + var_mc,
-        eqm_estimativa_corrigida_boot = vies_quadrado_boot + var_boot,
-        probabilidade_cobertura_boot = sum(cobertura_ic_boot) / n_mc
-      ) |>
+      dplyr::group_by(nomes_parametros) |>
+        dplyr::mutate(
+          vies_quadrado_mc = (parametros_verdadeiros - estimativas_mc) ^ 2,
+          vies_quadrado_boot = (parametros_verdadeiros - estimativas_corrigida_boot) ^ 2,
+          var_mc = var(estimativas_mc),
+          var_boot = var(estimativas_corrigida_boot),
+          eqm_quadrado_mc = vies_quadrado_mc + var_mc,
+          eqm_estimativa_corrigida_boot = vies_quadrado_boot + var_boot,
+          probabilidade_cobertura_boot = sum(cobertura_ic_boot) / n_mc
+        ) |>
       summarize(across(where(is.numeric), \(x) mean(x, na.rm = TRUE)))
     
-    r$tau <- tau
-
+    if(paralelo){
+      r$tempo_segundos <- (r$tempo_segundos[1L] * n_mc)/parallel::detectCores()
+      r$tempo_minutos <- (r$tempo_minutos[1L] * n_mc)/parallel::detectCores()
+      r$tempo_horas <- (r$tempo_horas[1L] * n_mc)/parallel::detectCores()
+    } else {
+      r$tempo_segundos <- r$tempo_segundos[1L] * n_mc
+      r$tempo_minutos <- r$tempo_minutos[1L] * n_mc
+      r$tempo_horas <- r$tempo_horas[1L] * n_mc
+    }
+   
     openxlsx::write.xlsx(
       r,
-      glue::glue("/home/prdm0/Dropbox/rascunhos/cleide/simulacoes_n_{n}_tau_{tau}.xlsx")
+      glue::glue("data/simulacoes_n_{n}_tau_{tau}.xlsx")
     )
     
     return(r)
@@ -454,8 +437,8 @@ mc <-
 simulacao <- 
   function(
     n = c(50, 100, 250, 500, 1000, 2500, 5000),
-    n_mc = 2000L,
-    n_boot = 250L,
+    n_mc = 2L,
+    n_boot = 10L,
     sig = 0.05,
     tau = tau,
     beta00 = beta00, 
@@ -466,7 +449,7 @@ simulacao <-
     theta=theta,
     paralelo = TRUE
   ){
-  
+    
     r <- purrr::map_dfr(tau, function(current_tau) {
       purrr::map_dfr(n, function(current_n) {
         mc(
@@ -490,7 +473,6 @@ simulacao <-
   }
 
 library(tictoc)
-
 tic()
 set.seed(123)
 resultados <- simulacao(
@@ -505,9 +487,9 @@ resultados <- simulacao(
   beta11 = beta11,
   a = a,
   theta = theta,
-  paralelo = TRUE
+  paralelo = FALSE
 ) 
 toc()
 
 # Salvando os resultados da simulacao -------------------------------------
-openxlsx::write.xlsx(resultados, "/home/prdm0/Dropbox/rascunhos/cleide/simulacoes.xlsx")
+openxlsx::write.xlsx(resultados, "data/results_simulacao.xlsx")
