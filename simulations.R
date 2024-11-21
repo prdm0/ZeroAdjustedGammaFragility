@@ -15,6 +15,11 @@ rm(list = ls(all = TRUE))
 
 Rcpp::sourceCpp("src/log_likelihood_rcpp.cpp")
 
+# Criando diretorio data se não existir
+if (!dir.exists("data")) {
+  dir.create("data")
+}
+
 s_zero_adjusted <- function(S){
   function(t, p0, ...){
     if(t == 0) return(1 - p0)
@@ -470,8 +475,8 @@ mc.reset.stream()
 tic()
 resultados <- simulacao(
   n = c(50, 100, 250, 500, 1000, 2500, 5000),
-  n_mc = 5000,
-  n_boot = 500,
+  n_mc = 50,
+  n_boot = 10,
   sig = 0.05,
   tau = c(0.2, 0.4, 0.6),
   beta00 = beta00,
