@@ -473,7 +473,7 @@ resultados <- simulacao(
   n_mc = 5000,
   n_boot = 500,
   sig = 0.05,
-  tau = c(0.2),
+  tau = c(0.2, 0.4, 0.6),
   beta00 = beta00,
   beta01 = beta01,
   beta10 = beta10,
