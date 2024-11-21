@@ -9,6 +9,7 @@ library(vroom) # install.packages("vroom")
 library(pbmcapply) # install.packages("pbmcapply")
 library(Rcpp) # install.packages("Rcpp")
 library(openxlsx) # install.packages("openxlsx")
+library(tictoc) # install.packages("tictoc")
 
 rm(list = ls(all = TRUE))
 
@@ -163,9 +164,6 @@ mc <-
     
     one_step <- function(m){
       # Amostra original da replica de Monte-Carlo - MC
-      
-      t0 <- Sys.time()
-      
       repeat {
         # Gerar dados
         dados <- geracao(
@@ -311,10 +309,6 @@ mc <-
         ic_boot |>
         dplyr::mutate(amplitudade = ls - li) 
       
-      time_secs <- as.numeric(Sys.time() - t0)
-      time_mins <- time_secs/60
-      time_hours <- time_mins/60
-      
       tibble(
         id_mc = m,
         n = n,
@@ -364,10 +358,7 @@ mc <-
         ),
         amplitude = ic_boot$amplitudade,
         li_boot = ic_boot$li,
-        ls_boot = ic_boot$ls,
-        tempo_segundos = time_secs,
-        tempo_minutos = time_mins,
-        tempo_horas = time_hours
+        ls_boot = ic_boot$ls
       )
       
     } # Fim da funcao one_step
@@ -392,14 +383,24 @@ mc <-
       cores <- 1L
     }
     
+    t0 <- Sys.time()
     r <- pbmclapply(
       X = 1L:n_mc,         
       FUN = replicas_mc,    # Função a ser executada
       mc.cores = cores      # Número de núcleos
     )
+    t1 <- Sys.time()
+    
+    time_secs <- difftime(t1, t0, units = "secs")[[1L]]
+    time_mins <- difftime(t1, t0, units = "mins")[[1L]]
+    time_hours <- difftime(t1, t0, units = "hours")[[1L]]
     
     r <- dplyr::bind_rows(r)
     r$tau <- tau
+    r$tempo_segundos <- time_secs
+    r$tempo_minutos <- time_mins
+    r$tempo_horas <- time_hours
+    
     
     r <-
       r |>
@@ -415,15 +416,15 @@ mc <-
         ) |>
       summarize(across(where(is.numeric), \(x) mean(x, na.rm = TRUE)))
     
-    if(paralelo){
-      r$tempo_segundos <- (r$tempo_segundos[1L] * n_mc)/parallel::detectCores()
-      r$tempo_minutos <- (r$tempo_minutos[1L] * n_mc)/parallel::detectCores()
-      r$tempo_horas <- (r$tempo_horas[1L] * n_mc)/parallel::detectCores()
-    } else {
-      r$tempo_segundos <- r$tempo_segundos[1L] * n_mc
-      r$tempo_minutos <- r$tempo_minutos[1L] * n_mc
-      r$tempo_horas <- r$tempo_horas[1L] * n_mc
-    }
+    # if(paralelo){
+    #   r$tempo_segundos <- (r$tempo_segundos[1L] * n_mc)/parallel::detectCores()
+    #   r$tempo_minutos <- (r$tempo_minutos[1L] * n_mc)/parallel::detectCores()
+    #   r$tempo_horas <- (r$tempo_horas[1L] * n_mc)/parallel::detectCores()
+    # } else {
+    #   r$tempo_segundos <- r$tempo_segundos[1L] * n_mc
+    #   r$tempo_minutos <- r$tempo_minutos[1L] * n_mc
+    #   r$tempo_horas <- r$tempo_horas[1L] * n_mc
+    # }
    
     openxlsx::write.xlsx(
       r,
@@ -472,24 +473,27 @@ simulacao <-
     r
   }
 
-library(tictoc)
-tic()
+
+RNGkind("L'Ecuyer-CMRG")
 set.seed(123)
+mc.reset.stream()
+
+tic()
 resultados <- simulacao(
-  n = c(50, 100, 250, 500, 1000, 2500, 5000),
-  n_mc = 5000,
-  n_boot = 500,
+  n = c(500, 1000),
+  n_mc = 100,
+  n_boot = 20,
   sig = 0.05,
-  tau = c(0.2, 0.4, 0.6),
+  tau = c(0.2, 0.4),
   beta00 = beta00,
   beta01 = beta01,
   beta10 = beta10,
   beta11 = beta11,
   a = a,
   theta = theta,
-  paralelo = FALSE
+  paralelo = TRUE
 ) 
 toc()
 
 # Salvando os resultados da simulacao -------------------------------------
-openxlsx::write.xlsx(resultados, "data/results_simulacao.xlsx")
+openxlsx::write.xlsx(resultados, "data/resultados_simulacao.xlsx")
