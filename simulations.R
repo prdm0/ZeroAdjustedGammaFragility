@@ -416,16 +416,6 @@ mc <-
         ) |>
       summarize(across(where(is.numeric), \(x) mean(x, na.rm = TRUE)))
     
-    # if(paralelo){
-    #   r$tempo_segundos <- (r$tempo_segundos[1L] * n_mc)/parallel::detectCores()
-    #   r$tempo_minutos <- (r$tempo_minutos[1L] * n_mc)/parallel::detectCores()
-    #   r$tempo_horas <- (r$tempo_horas[1L] * n_mc)/parallel::detectCores()
-    # } else {
-    #   r$tempo_segundos <- r$tempo_segundos[1L] * n_mc
-    #   r$tempo_minutos <- r$tempo_minutos[1L] * n_mc
-    #   r$tempo_horas <- r$tempo_horas[1L] * n_mc
-    # }
-   
     openxlsx::write.xlsx(
       r,
       glue::glue("data/simulacoes_n_{n}_tau_{tau}.xlsx")
@@ -473,18 +463,17 @@ simulacao <-
     r
   }
 
-
 RNGkind("L'Ecuyer-CMRG")
 set.seed(123)
 mc.reset.stream()
 
 tic()
 resultados <- simulacao(
-  n = c(500, 1000),
-  n_mc = 100,
-  n_boot = 20,
+  n = c(50, 100, 250, 500, 1000, 2500, 5000),
+  n_mc = 5000,
+  n_boot = 500,
   sig = 0.05,
-  tau = c(0.2, 0.4),
+  tau = c(0.2),
   beta00 = beta00,
   beta01 = beta01,
   beta10 = beta10,
