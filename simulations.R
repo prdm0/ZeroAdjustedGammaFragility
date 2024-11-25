@@ -475,8 +475,8 @@ mc.reset.stream()
 tic()
 resultados <- simulacao(
   n = c(50, 100, 250, 500, 1000, 2500, 5000),
-  n_mc = 50,
-  n_boot = 10,
+  n_mc = 5000,
+  n_boot = 500,
   sig = 0.05,
   tau = c(0.2, 0.4, 0.6),
   beta00 = beta00,
